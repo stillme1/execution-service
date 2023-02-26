@@ -34,6 +34,8 @@ func Submit(w http.ResponseWriter, r *http.Request) {
 
 	// write file to disk
 	os.Mkdir(submissionId, 0777)
+    defer os.RemoveAll(submissionId)
+    
 	err = os.WriteFile(submissionId+"/"+submissionId+".cpp", buffer.Bytes(), 0644)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
