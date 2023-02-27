@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-func RunCode(submissionId, problemId, input_dir string) {
+func RunCode(submissionId, problemId string) {
 
-	submission_dir := submissionId
+	submission_dir := submissionId + "/cpp"
 
 	compiled := Compile(submission_dir+"/"+submissionId+".cpp", submission_dir+"/exec")
 	if !compiled {
@@ -20,45 +20,27 @@ func RunCode(submissionId, problemId, input_dir string) {
 		println("Compilation Success")
 	}
 
-	output_dir := submissionId + "/output"
-	error_dir := submissionId + "/error"
-	meta_dir := submissionId + "/meta"
-
-	err := os.Mkdir(output_dir, 0777)
+	time_limit, memoryLimit, _, err := GetFiles(problemId, submissionId)
+	timeLimit := float64(time_limit)
 	if err != nil {
+		println("Error getting files")
 		return
 	}
-
-	err = os.Mkdir(error_dir, 0777)
+	// unzip submissionId.zip into submission_dir
+	err = exec.Command("unzip", submissionId+".zip", "-d", submissionId).Run()
 	if err != nil {
+		fmt.Println("error unzipping:", err)
 		return
 	}
-
-	err = os.Mkdir(meta_dir, 0777)
-	if err != nil {
-		return
-	}
-
-	// copy the file to submission output_dir
-	// Later going to be fetched from database
-	timeLimit := 2.0
-	memoryLimit := 100
-	err = exec.Command("cp", "-r", input_dir, submission_dir).Run()
-	if err != nil {
-		fmt.Println("error copying input_dir:", err)
-		return
-	}
-
-	// // time docker run -e SUBMISSION_ID="1" - TIME_LIMIT=2 -e MEMORY_LIMIT=100 -v /home/sahil/dockerTest/cpp:/1 my-image
+	meta_dir := submission_dir + "/meta"
+	
+	// Running docker contianer
 	dir, _ := os.Getwd()
 	err = exec.Command("docker", "run", "-e", "SUBMISSION_ID="+submissionId, "-e", "TIME_LIMIT="+fmt.Sprintf("%v", timeLimit), "-e", "MEMORY_LIMIT="+fmt.Sprintf("%d", memoryLimit), "-v", dir+"/"+submission_dir+":/"+submissionId, "my-image").Run()
 	if err != nil {
 		fmt.Println("error running docker:", err)
 		return
 	}
-
-	// Judge the output
-	// Judge(submissionId, problemId)
 
 	files, err := os.Open(meta_dir)
 	if err != nil {
@@ -91,7 +73,14 @@ func RunCode(submissionId, problemId, input_dir string) {
 			}
 			break
 		}
+		// TODO Judge the output
+		// .
+		// .
 		println("test case", i, "passed")
 	}
-	println("exiting RunCode")
+}
+
+
+func Compile(inpath, outpath string) bool {
+	return exec.Command("g++", inpath, "-o", outpath).Run() == nil
 }

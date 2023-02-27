@@ -15,9 +15,8 @@ func Submit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	// Get submission id
+	problemId := r.FormValue("problemId")
 	submissionId := r.FormValue("submissionId")
-	// Get the file from the form data
 	file, _, err := r.FormFile("file")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -34,9 +33,11 @@ func Submit(w http.ResponseWriter, r *http.Request) {
 
 	// write file to disk
 	os.Mkdir(submissionId, 0777)
-    defer os.RemoveAll(submissionId)
-    
-	err = os.WriteFile(submissionId+"/"+submissionId+".cpp", buffer.Bytes(), 0644)
+	os.Mkdir(submissionId+"/cpp", 0777)
+	defer os.RemoveAll(submissionId)
+	defer os.RemoveAll(submissionId + ".zip")
+
+	err = os.WriteFile(submissionId+"/cpp/"+submissionId+".cpp", buffer.Bytes(), 0644)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -48,7 +49,7 @@ func Submit(w http.ResponseWriter, r *http.Request) {
 
 	// run the code
 	start := time.Now()
-	RunCode(submissionId, "1", "cpp/input")
+	RunCode(submissionId, problemId)
 	end := time.Now()
 	println("Time taken: ", end.Sub(start).Milliseconds(), "ms")
 }
