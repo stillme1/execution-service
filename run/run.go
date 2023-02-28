@@ -23,7 +23,7 @@ func RunCode(submissionId, problemId string) {
 	time_limit, memoryLimit, _, err := GetFiles(problemId, submissionId)
 	timeLimit := float64(time_limit)
 	if err != nil {
-		println("Error getting files")
+		println("Error getting meta_files")
 		return
 	}
 	// unzip submissionId.zip into submission_dir
@@ -33,29 +33,37 @@ func RunCode(submissionId, problemId string) {
 		return
 	}
 	meta_dir := submission_dir + "/meta"
+	checker_dir := submission_dir + "/checker"
+	verdict_dir := submission_dir + "/verdict"
 	
 	// Running docker contianer
 	dir, _ := os.Getwd()
-	err = exec.Command("docker", "run", "-e", "SUBMISSION_ID="+submissionId, "-e", "TIME_LIMIT="+fmt.Sprintf("%v", timeLimit), "-e", "MEMORY_LIMIT="+fmt.Sprintf("%d", memoryLimit), "-v", dir+"/"+submission_dir+":/"+submissionId, "my-image").Run()
+	err = exec.Command("docker", "run", "-e", "SUBMISSION_ID="+submissionId, "-e", "TIME_LIMIT="+fmt.Sprintf("%v", timeLimit), "-e", "MEMORY_LIMIT="+fmt.Sprintf("%d", memoryLimit), "-v", dir+"/"+submission_dir+":/"+submissionId, "my_imm").Run()
 	if err != nil {
 		fmt.Println("error running docker:", err)
 		return
 	}
 
-	files, err := os.Open(meta_dir)
+	meta_files, err := os.Open(meta_dir)
 	if err != nil {
 		fmt.Println("error opening meta_dir:", err)
 		return
 	}
-	defer files.Close()
+	input_files, err := os.Open(submission_dir + "/input")
+	if err != nil {
+		fmt.Println("error opening meta_dir:", err)
+		return
+	}
+	defer meta_files.Close()
+	defer input_files.Close()
 
-	fileInfos, err := files.Readdir(-1)
+	meta_info_files, err := meta_files.Readdir(-1)
 	if err != nil {
 		fmt.Println("error reading meta_dir:", err)
 		return
 	}
-	for i, fileInfos := range fileInfos {
-		metaFile, err := os.ReadFile(meta_dir + "/" + fileInfos.Name())
+	for _, meta_info_files := range meta_info_files {
+		metaFile, err := os.ReadFile(meta_dir + "/" + meta_info_files.Name())
 		if err != nil {
 			fmt.Println("error reading meta_file:", err)
 			break
@@ -73,11 +81,38 @@ func RunCode(submissionId, problemId string) {
 			}
 			break
 		}
-		// TODO Judge the output
-		// .
-		// .
-		println("test case", i, "passed")
 	}
+	// compare output with checker
+	input_files_info, err := input_files.Readdir(-1)
+	if err != nil {
+		fmt.Println("error reading input_dir:", err)
+		return
+	}
+	for i, input_files_info := range input_files_info {
+		input_file := submission_dir + "/input/" + input_files_info.Name()
+		outut_file := submission_dir + "/output/" + input_files_info.Name()
+		answer_file := submission_dir + "/answer/" + input_files_info.Name()
+		verdict_file := verdict_dir + "/" + input_files_info.Name()
+
+		// Judging the output
+		err := exec.Command("bash","-c","./"+checker_dir+" "+ input_file+" "+outut_file+" "+answer_file+" 2> "+verdict_file).Run()
+		if err != nil {
+			fmt.Println("error running checker:", err)
+			break
+		}
+		verdict, err := os.ReadFile(verdict_file)
+		if err != nil {
+			fmt.Println("error reading verdict_file:", err)
+			break
+		}
+		if string(verdict)[:2] != "ok" {
+			println("wrong answer on test case", i+1)
+			return
+		} else {
+			println("test case", i+1, "passed")
+		}
+	}
+	println("AC")
 }
 
 
