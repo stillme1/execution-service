@@ -29,7 +29,7 @@ func RunCode(submissionId, problemId string) {
 	// unzip submissionId.zip into submission_dir
 	err = exec.Command("unzip", submissionId+".zip", "-d", submissionId).Run()
 	if err != nil {
-		fmt.Println("error unzipping:", err)
+		println("error unzipping:", err)
 		return
 	}
 	meta_dir := submission_dir + "/meta"
@@ -40,18 +40,18 @@ func RunCode(submissionId, problemId string) {
 	dir, _ := os.Getwd()
 	err = exec.Command("docker", "run", "-e", "SUBMISSION_ID="+submissionId, "-e", "TIME_LIMIT="+fmt.Sprintf("%v", timeLimit), "-e", "MEMORY_LIMIT="+fmt.Sprintf("%d", memoryLimit), "-v", dir+"/"+submission_dir+":/"+submissionId, "my_imm").Run()
 	if err != nil {
-		fmt.Println("error running docker:", err)
+		println("error running docker:", err)
 		return
 	}
 
 	meta_files, err := os.Open(meta_dir)
 	if err != nil {
-		fmt.Println("error opening meta_dir:", err)
+		println("error opening meta_dir:", err)
 		return
 	}
 	input_files, err := os.Open(submission_dir + "/input")
 	if err != nil {
-		fmt.Println("error opening meta_dir:", err)
+		println("error opening meta_dir:", err)
 		return
 	}
 	defer meta_files.Close()
@@ -59,13 +59,13 @@ func RunCode(submissionId, problemId string) {
 
 	meta_info_files, err := meta_files.Readdir(-1)
 	if err != nil {
-		fmt.Println("error reading meta_dir:", err)
+		println("error reading meta_dir:", err)
 		return
 	}
 	for _, meta_info_files := range meta_info_files {
 		metaFile, err := os.ReadFile(meta_dir + "/" + meta_info_files.Name())
 		if err != nil {
-			fmt.Println("error reading meta_file:", err)
+			println("error reading meta_file:", err)
 			break
 		}
 		metaInfo := strings.Split(string(metaFile), " ")
@@ -85,7 +85,7 @@ func RunCode(submissionId, problemId string) {
 	// compare output with checker
 	input_files_info, err := input_files.Readdir(-1)
 	if err != nil {
-		fmt.Println("error reading input_dir:", err)
+		println("error reading input_dir:", err.Error())
 		return
 	}
 	for i, input_files_info := range input_files_info {
@@ -97,12 +97,12 @@ func RunCode(submissionId, problemId string) {
 		// Judging the output
 		err := exec.Command("bash","-c","./"+checker_dir+" "+ input_file+" "+outut_file+" "+answer_file+" 2> "+verdict_file).Run()
 		if err != nil {
-			fmt.Println("error running checker:", err)
-			break
+			println("Judge error on test case:", i+1, err.Error())
+			return;
 		}
 		verdict, err := os.ReadFile(verdict_file)
 		if err != nil {
-			fmt.Println("error reading verdict_file:", err)
+			println("error reading verdict_file:", err)
 			break
 		}
 		if string(verdict)[:2] != "ok" {
